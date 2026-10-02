@@ -2,7 +2,7 @@ import socket
 import ssl
 import getpass
 
-IP_SERVIDOR = "192.168.1.64"
+IP_SERVIDOR = "192.168.1.197"
 PUERTO = 5000
 
 usuario = input("Usuario: ")

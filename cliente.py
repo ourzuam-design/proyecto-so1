@@ -1,9 +1,11 @@
 import socket
 import ssl
 import getpass
+import sys
 
-IP_SERVIDOR = "192.168.1.197"
+IP_SERVIDOR = sys.argv[1] if len(sys.argv) > 1 else "192.168.1.197"
 PUERTO = 5000
+print(f"Conectando a {IP_SERVIDOR}:{PUERTO}...")
 
 usuario = input("Usuario: ")
 clave = getpass.getpass("Contraseña: ")

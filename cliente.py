@@ -3,11 +3,12 @@ import getpass
 import os
 import socket
 import ssl
+import sys
 import urllib.parse
 import cifrado
 
-IP_SERVIDOR_POR_DEFECTO = "192.168.1.197"
-PUERTO_POR_DEFECTO = 5000
+IP_SERVIDOR_POR_DEFECTO = sys.argv[1] if len(sys.argv) > 1 else "192.168.1.197"
+PUERTO_POR_DEFECTO = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 5000
 
 print("=== CONEXIÓN AL SERVIDOR UBUNTU ===")
 ip_entrada = input(f"Dirección IP del servidor [{IP_SERVIDOR_POR_DEFECTO}]: ").strip()

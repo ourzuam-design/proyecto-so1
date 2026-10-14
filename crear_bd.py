@@ -5,31 +5,41 @@ import os
 def hash_clave(clave, sal):
     return hashlib.pbkdf2_hmac("sha256", clave.encode(), sal, 100000).hex()
 
-con = sqlite3.connect("sistema.db")
-cur = con.cursor()
+conexion = sqlite3.connect("sistema.db")
+cursor = conexion.cursor()
 
-cur.execute("""CREATE TABLE IF NOT EXISTS usuarios (
+cursor.execute("""CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT UNIQUE NOT NULL,
     sal BLOB NOT NULL,
     clave_hash TEXT NOT NULL,
     rol TEXT NOT NULL DEFAULT 'usuario')""")
 
-cur.execute("""CREATE TABLE IF NOT EXISTS logs (
+cursor.execute("""CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     fecha TEXT DEFAULT CURRENT_TIMESTAMP,
     usuario TEXT,
     accion TEXT,
     detalle TEXT)""")
 
-sal = os.urandom(16)
+cursor.execute("""CREATE TABLE IF NOT EXISTS archivos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre_archivo TEXT NOT NULL,
+    nombre_guardado TEXT NOT NULL,
+    propietario TEXT NOT NULL,
+    tamano_original INTEGER NOT NULL,
+    tamano_cifrado INTEGER NOT NULL,
+    fecha TEXT DEFAULT CURRENT_TIMESTAMP,
+    hash_sha256 TEXT NOT NULL)""")
+
+sal_aleatoria = os.urandom(16)
 try:
-    cur.execute(
+    cursor.execute(
         "INSERT INTO usuarios (nombre, sal, clave_hash, rol) VALUES (?, ?, ?, ?)",
-        ("admin", sal, hash_clave("admin123", sal), "admin"))
+        ("admin", sal_aleatoria, hash_clave("admin123", sal_aleatoria), "admin"))
     print("Usuario admin creado (clave: admin123)")
 except sqlite3.IntegrityError:
     print("El usuario admin ya existe")
 
-con.commit()
-con.close()
+conexion.commit()
+conexion.close()

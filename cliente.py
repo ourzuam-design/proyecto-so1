@@ -148,6 +148,14 @@ def descargar_archivo():
     paquete_cifrado = b"".join(bloques_recibidos)
     print("Descifrando archivo descargado y verificando autenticidad...")
 
+    if len(partes_cabecera) >= 4:
+        hash_servidor = partes_cabecera[3]
+        hash_descargado = cifrado.calcular_hash_sha256(paquete_cifrado)
+        if hash_descargado == hash_servidor:
+            print("Integridad SHA-256: ¡Verificada correctamente!")
+        else:
+            print("ADVERTENCIA: La suma SHA-256 no coincide con la del servidor.")
+
     try:
         contenido_descifrado = cifrado.descifrar_datos(paquete_cifrado, clave_final)
     except ValueError as error_cifrado:
@@ -162,40 +170,117 @@ def descargar_archivo():
         print(f"Error al escribir en disco local: {error_escritura}")
 
 
+def cambiar_mi_clave():
+    actual = getpass.getpass("Contraseña actual: ")
+    nueva = getpass.getpass("Nueva contraseña (mínimo 6 caracteres): ")
+    if len(nueva) < 6:
+        print("La nueva contraseña debe tener al menos 6 caracteres")
+        return
+    enviar_comando_simple(f"CAMBIARCLAVE {actual} {nueva}")
+
+
+def compartir_archivo():
+    identificador = input("Nombre o ID del archivo a compartir: ").strip()
+    if not identificador:
+        return
+    destino = input("Nombre del usuario destinatario: ").strip()
+    if not destino:
+        return
+    enviar_comando_simple(f"COMPARTIRARCHIVO {urllib.parse.quote(identificador)} {destino}")
+
+
+def revocar_archivo():
+    identificador = input("Nombre o ID del archivo para revocar acceso: ").strip()
+    if not identificador:
+        return
+    destino = input("Nombre del usuario al que se le revoca: ").strip()
+    if not destino:
+        return
+    enviar_comando_simple(f"REVOCARARCHIVO {urllib.parse.quote(identificador)} {destino}")
+
+
+def consultar_cuota():
+    flujo.write("CUOTA\n")
+    flujo.flush()
+    resp = flujo.readline().strip()
+    while True:
+        fin = flujo.readline().strip()
+        if fin == "<<FIN>>" or fin == "":
+            break
+    if resp.startswith("USADO:"):
+        partes = resp.split()
+        usado_b = int(partes[0].split(":")[1])
+        limite_b = int(partes[1].split(":")[1])
+        usado_mb = round(usado_b / (1024 * 1024), 2)
+        if limite_b < 0:
+            print(f"Cuota de almacenamiento: {usado_mb} MB usados (Ilimitado para admin)")
+        else:
+            limite_mb = round(limite_b / (1024 * 1024), 1)
+            print(f"Cuota de almacenamiento: {usado_mb} MB usados de {limite_mb} MB")
+    else:
+        print(resp)
+
+
+
 while True:
     print("\n--- MENÚ PRINCIPAL ---")
     print("1) Info del sistema")
     print("2) Procesos en ejecución")
-    print("3) Subir archivo cifrado")
-    print("4) Listar archivos en servidor")
-    print("5) Descargar y descifrar archivo")
-    print("6) Eliminar archivo en servidor")
-    print("7) Crear usuario      (solo admin)")
-    print("8) Listar usuarios    (solo admin)")
-    print("9) Eliminar usuario   (solo admin)")
-    print("10) Listar logs        (solo admin)")
-    print("11) Salir")
+    print("3) Finalizar proceso (kill) (admin)")
+    print("4) Subir archivo cifrado")
+    print("5) Listar archivos en servidor")
+    print("6) Descargar y descifrar archivo")
+    print("7) Compartir archivo")
+    print("8) Revocar archivo compartido")
+    print("9) Eliminar archivo en servidor")
+    print("10) Consultar cuota de almacenamiento")
+    print("11) Cambiar mi contraseña")
+    print("12) Ver usuarios conectados en vivo")
+    print("13) Ejecutar comando en servidor (admin)")
+    print("14) Crear usuario (admin)")
+    print("15) Listar usuarios (admin)")
+    print("16) Eliminar usuario (admin)")
+    print("17) Listar logs de auditoría (admin)")
+    print("18) Salir")
     opcion_elegida = input("Opción: ").strip()
 
     if opcion_elegida == "1":
         enviar_comando_simple("INFO")
     elif opcion_elegida == "2":
-        limite_proc = input("Cantidad máxima de procesos a mostrar [Enter para ver TODOS]: ").strip()
+        limite_proc = input("Cantidad máxima de procesos [Enter para ver TODOS]: ").strip()
         if limite_proc.isdigit():
             enviar_comando_simple(f"PROCESOS {limite_proc}")
         else:
             enviar_comando_simple("PROCESOS")
     elif opcion_elegida == "3":
-        subir_archivo()
+        pid = input("PID del proceso a terminar: ").strip()
+        if pid.isdigit():
+            enviar_comando_simple(f"KILLPROCESO {pid}")
     elif opcion_elegida == "4":
-        enviar_comando_simple("LISTARARCHIVOS")
+        subir_archivo()
     elif opcion_elegida == "5":
-        descargar_archivo()
+        enviar_comando_simple("LISTARARCHIVOS")
     elif opcion_elegida == "6":
+        descargar_archivo()
+    elif opcion_elegida == "7":
+        compartir_archivo()
+    elif opcion_elegida == "8":
+        revocar_archivo()
+    elif opcion_elegida == "9":
         archivo_a_borrar = input("Nombre o ID del archivo a eliminar en servidor: ").strip()
         if archivo_a_borrar:
             enviar_comando_simple(f"ELIMINARARCHIVO {urllib.parse.quote(archivo_a_borrar)}")
-    elif opcion_elegida == "7":
+    elif opcion_elegida == "10":
+        consultar_cuota()
+    elif opcion_elegida == "11":
+        cambiar_mi_clave()
+    elif opcion_elegida == "12":
+        enviar_comando_simple("USUARIOSCONECTADOS")
+    elif opcion_elegida == "13":
+        cmd_shell = input("Comando a ejecutar en el servidor: ").strip()
+        if cmd_shell:
+            enviar_comando_simple(f"EJECUTAR {cmd_shell}")
+    elif opcion_elegida == "14":
         nombre_nuevo = input("Nombre del nuevo usuario: ").strip()
         clave_nueva = getpass.getpass("Contraseña del nuevo usuario: ")
         rol_nuevo = input("Rol (admin/usuario) [usuario]: ").strip() or "usuario"
@@ -203,15 +288,15 @@ while True:
             print("El nombre y la contraseña no pueden tener espacios")
         else:
             enviar_comando_simple(f"CREARUSUARIO {nombre_nuevo} {clave_nueva} {rol_nuevo}")
-    elif opcion_elegida == "8":
+    elif opcion_elegida == "15":
         enviar_comando_simple("LISTARUSUARIOS")
-    elif opcion_elegida == "9":
+    elif opcion_elegida == "16":
         usuario_a_eliminar = input("Usuario a eliminar: ").strip()
         if usuario_a_eliminar:
             enviar_comando_simple(f"ELIMINARUSUARIO {usuario_a_eliminar}")
-    elif opcion_elegida == "10":
+    elif opcion_elegida == "17":
         enviar_comando_simple("LISTARLOGS")
-    elif opcion_elegida == "11":
+    elif opcion_elegida == "18":
         flujo.write("SALIR\n")
         flujo.flush()
         break

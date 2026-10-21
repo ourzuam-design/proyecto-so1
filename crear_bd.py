@@ -21,7 +21,6 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS logs (
     usuario TEXT,
     accion TEXT,
     detalle TEXT)""")
-
 cursor.execute("""CREATE TABLE IF NOT EXISTS archivos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre_archivo TEXT NOT NULL,
@@ -31,6 +30,14 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS archivos (
     tamano_cifrado INTEGER NOT NULL,
     fecha TEXT DEFAULT CURRENT_TIMESTAMP,
     hash_sha256 TEXT NOT NULL)""")
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS archivos_compartidos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_archivo INTEGER NOT NULL,
+    usuario_destino TEXT NOT NULL,
+    fecha TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(id_archivo, usuario_destino))""")
+
 
 sal_aleatoria = os.urandom(16)
 try:
